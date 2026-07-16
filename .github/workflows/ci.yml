@@ -109,3 +109,38 @@ jobs:
           format: table
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+
+  push:
+    name: Push to GHCR
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, codeql]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load image
+        run: docker load -i task-api.tar
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/task-api
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[:upper:]' '[:lower:]')
+
+          docker tag task-api:${{ github.sha }} $IMAGE_ID:${{ github.sha }}
+          docker tag task-api:${{ github.sha }} $IMAGE_ID:latest
+
+          docker push $IMAGE_ID:${{ github.sha }}
+          docker push $IMAGE_ID:latest
