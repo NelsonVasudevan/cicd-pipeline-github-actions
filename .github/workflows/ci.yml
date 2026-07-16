@@ -45,3 +45,14 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t task-api:${{ github.sha }} .
